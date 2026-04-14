@@ -71,6 +71,17 @@ class RunSummary:
 # ---------------------------------------------------------------------------
 
 
+def strip_markdown_json(text: str) -> str:
+    """Strip ```json ... ``` fences if present. Claude sometimes wraps JSON despite instructions."""
+    text = text.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        # Remove first line (```json or ```) and last line (```)
+        inner = lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
+        return "\n".join(inner).strip()
+    return text
+
+
 def score_json_fields(actual: dict, expected: dict) -> tuple[bool, float]:
     """All expected fields must match in actual output."""
     if not expected:
@@ -170,7 +181,7 @@ async def run_case(
 
         if scorer == "json_field_match":
             try:
-                actual_parsed = json.loads(actual_output)
+                actual_parsed = json.loads(strip_markdown_json(actual_output))
                 passed, score = score_json_fields(actual_parsed, case.expected)
             except json.JSONDecodeError:
                 passed = False
