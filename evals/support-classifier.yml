@@ -1,0 +1,84 @@
+name: "Customer Support Ticket Classifier"
+model: claude-sonnet-4-6
+scorer: json_field_match
+
+# The prompt is cached after the first API call.
+# All 12 cases share this cached prefix — only the first call pays full
+# input cost; the rest pay ~10% (cache read price).
+prompt: |
+  You are a support ticket classifier for a SaaS company.
+
+  Classify each ticket into exactly one category:
+  - billing     : payment issues, invoices, refunds, subscription changes
+  - technical   : bugs, errors, API failures, integration issues
+  - account     : login, permissions, profile, team management, SSO
+  - escalate    : legal threats, security vulnerabilities, exec-level complaints
+  - general     : feature questions, documentation, onboarding
+
+  Rules:
+  - When in doubt between two categories, pick the more specific one
+  - "escalate" always takes priority over other categories
+  - Vague messages like "need help" → account if they imply access issues, else general
+
+  Respond with valid JSON only (no markdown, no explanation):
+  {
+    "category": "<category>",
+    "confidence": <0.0 to 1.0>,
+    "priority": "low" | "medium" | "high"
+  }
+
+  Priority rules:
+  - escalate → always high
+  - billing outage or API down → high
+  - general questions → low
+  - everything else → medium
+
+cases:
+  - id: billing-001
+    input: "I was charged twice for my subscription this month"
+    expected: {category: billing}
+
+  - id: billing-002
+    input: "Can I get a refund for the annual plan I just upgraded to?"
+    expected: {category: billing}
+
+  - id: billing-003
+    input: "Our company invoice shows the wrong address — need it corrected for accounting"
+    expected: {category: billing}
+
+  - id: technical-001
+    input: "Your API has been returning 500 errors for the last 2 hours"
+    expected: {category: technical}
+
+  - id: technical-002
+    input: "The Slack webhook integration stopped sending notifications after your update"
+    expected: {category: technical}
+
+  - id: technical-003
+    input: "I'm getting a CORS error when calling the API from my React app"
+    expected: {category: technical}
+
+  - id: account-001
+    input: "I can't log in — it says my credentials are invalid but I haven't changed them"
+    expected: {category: account}
+
+  - id: account-002
+    input: "How do I transfer admin rights to another team member?"
+    expected: {category: account}
+
+  - id: escalate-001
+    input: "If this isn't resolved by end of day I'm contacting our legal team"
+    expected: {category: escalate}
+
+  - id: escalate-002
+    input: "I found a security issue — your API is exposing other customers' data"
+    expected: {category: escalate}
+
+  - id: general-001
+    input: "What are your support hours on weekends?"
+    expected: {category: general}
+
+  - id: ambiguous-001
+    input: "I need help with my account"
+    expected: {category: account}
+    tags: [ambiguous]

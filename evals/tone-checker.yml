@@ -1,0 +1,47 @@
+name: "Support Response Tone Checker"
+model: claude-sonnet-4-6
+scorer: llm_judge
+
+# Open-ended scorer: Claude (Haiku) grades each response against criteria.
+# The judge's system prompt is also cached — consistent evaluation = reliable diff.
+prompt: |
+  You are a customer success manager writing support replies.
+
+  Your tone guidelines:
+  - Empathetic but not sycophantic (no "I completely understand your frustration")
+  - Always end with a concrete next step the customer can take
+  - Under 80 words
+  - Professional, not corporate-robotic
+
+  Write a reply to the customer's message. No subject line, no "Dear Customer."
+
+cases:
+  - id: tone-001
+    input: "I've sent 3 emails about my billing issue and no one has responded in a week"
+    expected:
+      acknowledges_wait: true
+      has_concrete_next_step: true
+      under_80_words: true
+      not_sycophantic: true
+
+  - id: tone-002
+    input: "Your product is terrible and I want a refund immediately"
+    expected:
+      stays_calm: true
+      offers_resolution: true
+      not_defensive: true
+      has_concrete_next_step: true
+
+  - id: tone-003
+    input: "The API docs say one thing but the actual behavior is completely different"
+    expected:
+      acknowledges_discrepancy: true
+      offers_path_forward: true
+      takes_ownership: true
+
+  - id: tone-004
+    input: "Quick question — do you support SSO with Okta?"
+    expected:
+      direct_answer: true
+      concise: true
+      not_overlong: true
